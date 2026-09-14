@@ -16,11 +16,14 @@ e poi aprire `http://localhost:8080`.
 
 ## Come si gioca
 
-- Scegli un cuoco nel pannello **Brigata di cucina** (o tasti `1`–`4`), poi tocca una piastrella libera per piazzarlo. `Esc` o tasto destro annullano.
+- Dal **menu** scegli il locale (3 mappe con difficoltà crescente). Stelle e record si salvano nel browser.
+- Scegli un cuoco nel pannello **Brigata di cucina** (o tasti `1`–`7`), poi tocca una piastrella libera per piazzarlo. `Esc` o tasto destro annullano.
 - Tocca una postazione per **potenziarla** (3 livelli) o **venderla** (rimborso 60%).
-- **Fai entrare i clienti** (o `Spazio`) avvia l'ondata. 10 ondate; l'ultima ha il boss.
+- **Fai entrare i clienti** (o `Spazio`) avvia l'ondata. 10 ondate; l'ultima ha il boss del locale.
+- **Abilità speciali** (`Q` `W` `E`) con ricarica: *Mamma mia!* blocca tutti i nemici, *Espresso* raddoppia la cadenza delle torri, *Olio bollente* danneggia un'area a scelta e lascia una pozza di fuoco.
 - Ogni nemico che arriva in **SALA** toglie clienti soddisfatti (vite). A zero, la trattoria chiude.
-- `⏩` cambia velocità 1×/2×, `⏸` mette in pausa.
+- Dopo l'ondata 10 puoi continuare in **modalità infinita**: ondate generate sempre più dure, boss ogni 5, record di ondata e punteggio per locale.
+- `⏩` cambia velocità 1×/2×, `⏸` mette in pausa, `☰` torna al menu.
 
 ## Brigata
 
@@ -30,13 +33,20 @@ e poi aprire `http://localhost:8080`.
 | 👵 Nonna | 80 | Danno ad area, corta gittata |
 | 🍦 Gelataio | 75 | Poco danno, rallenta i nemici |
 | 🍷 Sommelier | 100 | Lunga gittata, colpo lento e pesante |
+| ☕ Barista | 90 | Raffica di colpi leggeri |
+| 👮 Carabiniere | 110 | Ferma il bersaglio per qualche secondo |
+| 👴 Nonno | 120 | Grappa in fiamme: pozza di fuoco sul percorso |
+
+## Clienti sgraditi
+
+🍍 Ananas (base) · 🥫 Ketchup (veloce) · ☕ Cappuccino (corazzato) · 🎒 Turista con lo zaino (tank) · 🤳 Influencer (si teletrasporta in avanti) · Boss: 🍝 Carbonara con la panna, 🍍 Ananas Gigante (alla morte si divide in 6 ananas).
 
 ## Struttura
 
 ```
 index.html            layout e pannelli
 css/style.css         stile, responsive (colonna unica sotto 860px)
-js/config.js          TUTTI i numeri: mappa, torri, nemici, ondate
+js/config.js          TUTTI i numeri: mappe, torri, abilità, nemici, ondate, generatore infinito
 js/entities.js        Enemy, Tower, Projectile, Effect, FloatingText
 js/game.js            stato, ondate, azioni del giocatore, update loop
 js/render.js          disegno su canvas (sfondo pre-renderizzato)
@@ -50,11 +60,10 @@ Per cambiare il bilanciamento o aggiungere torri/nemici/ondate si tocca solo `js
 
 ## Stato e prossimi passi
 
-Prototipo v0.1: 1 mappa, 4 torri con 3 livelli, 4 nemici (1 boss), 10 ondate, vittoria/sconfitta.
+v0.3: 3 mappe con menu e salvataggio (stelle, record), 7 torri × 3 livelli, 7 nemici (2 boss), 3 abilità speciali, 10 ondate + modalità infinita, punteggio.
 
 Da fare / aperto:
-- Bilanciamento: in simulazione automatica il gioco è vincibile con strategie diverse, ma "solo pizzaioli" è la più forte; da rivedere dopo prove reali.
-- Più mappe e selezione livello, salvataggio progressi (localStorage).
-- Suoni ed effetti.
+- Bilanciamento con prove reali (in simulazione tutte le mappe sono vincibili; in modalità infinita una difesa "statica" cede verso l'ondata 15).
+- Suoni ed effetti audio.
 - Sprite disegnati al posto delle emoji (le emoji dipendono dal sistema operativo).
-- Torri extra a tema (es. Barista con caffè che "sveglia", Carabiniere, Nonno con la grappa).
+- Cache del service worker: alzare la versione in `sw.js` a ogni rilascio.

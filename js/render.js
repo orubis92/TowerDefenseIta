@@ -9,6 +9,7 @@ class Renderer {
     this.game = game;
     this.time = 0;
     this.buildBackground();
+    game.on("map-loaded", () => this.buildBackground());
   }
 
   /* --- utilità --- */
@@ -27,7 +28,7 @@ class Renderer {
 
   /* Sfondo statico pre-renderizzato (pavimento, percorso, decorazioni) */
   buildBackground() {
-    const g = this.game, c = g.cell;
+    const g = this.game, c = g.cell, MAP = g.map, P = MAP.palette;
     const bg = document.createElement("canvas");
     bg.width = g.width; bg.height = g.height;
     const ctx = bg.getContext("2d");
@@ -38,7 +39,7 @@ class Renderer {
         const n = this.noise(col, r);
         const light = (r + col) % 2 === 0 ? 6 : 0;
         const l = 62 + light + n * 6;
-        ctx.fillStyle = `hsl(28, 45%, ${l}%)`;
+        ctx.fillStyle = `hsl(${P.floorHue}, ${P.floorSat}%, ${l - (62 - P.floorLight)}%)`;
         ctx.fillRect(col * c, r * c, c, c);
         // bordo interno chiaro/scuro per dare rilievo
         ctx.fillStyle = "rgba(255,255,255,0.10)";
@@ -66,13 +67,13 @@ class Renderer {
     // ombra
     ctx.save();
     ctx.shadowColor = "rgba(0,0,0,0.35)"; ctx.shadowBlur = 14; ctx.shadowOffsetY = 4;
-    ctx.fillStyle = "#b23a2c";
+    ctx.fillStyle = P.path;
     pathPoly(); ctx.fill();
     ctx.restore();
     // corpo del tappeto
     ctx.save();
     pathPoly(); ctx.clip();
-    ctx.fillStyle = "#c9463a";
+    ctx.fillStyle = P.path;
     ctx.fillRect(0, 0, g.width, g.height);
     // trama a quadretti soft
     const q = c / 4;
@@ -88,12 +89,12 @@ class Renderer {
     ctx.stroke();
     ctx.setLineDash([]);
     // bordo interno chiaro
-    ctx.strokeStyle = "rgba(255,220,190,0.55)"; ctx.lineWidth = 6;
+    ctx.strokeStyle = P.pathLight; ctx.lineWidth = 6;
     pathPoly(); ctx.stroke();
     ctx.restore();
     // bordo esterno scuro
     ctx.save();
-    ctx.strokeStyle = "#7d2216"; ctx.lineWidth = 3;
+    ctx.strokeStyle = P.pathDark; ctx.lineWidth = 3;
     this.strokePathOutline(ctx);
     ctx.restore();
 
@@ -113,13 +114,15 @@ class Renderer {
     }
 
     // porta d'ingresso e sala
+    const clampX = x => Math.min(Math.max(x, 24), g.width - 24);
+    const clampY = y => Math.min(Math.max(y, 24), g.height - 24);
     const start = g.path[0], end = g.path[g.path.length - 1];
-    const sx = Math.max(start.x, 24), ex = Math.min(end.x, g.width - 24);
-    this.label(ctx, "INGRESSO", sx + 10, start.y - 26);
-    this.label(ctx, "SALA", ex - 8, end.y - 26);
+    const sx = clampX(start.x), sy = clampY(start.y), ex = clampX(end.x), ey = clampY(end.y);
+    this.label(ctx, "INGRESSO", sx + (start.x < 0 ? 10 : 0), sy - 26 < 8 ? sy + 26 : sy - 26);
+    this.label(ctx, "SALA", ex - (end.x > g.width ? 8 : 0), ey - 26);
     ctx.font = "30px sans-serif";
-    ctx.fillText("🚪", sx, start.y + 2);
-    ctx.fillText("🍽️", ex, end.y + 2);
+    ctx.fillText("🚪", sx, sy + 2);
+    ctx.fillText("🍽️", ex, ey + 2);
 
     // vignettatura
     const vg = ctx.createRadialGradient(g.width / 2, g.height / 2, g.height * 0.45, g.width / 2, g.height / 2, g.width * 0.75);
@@ -145,10 +148,11 @@ class Renderer {
     for (const key of g.pathCells) {
       const [col, r] = key.split(",").map(Number);
       const x = col * c, y = r * c;
-      if (!g.isPath(col, r - 1) && r - 1 >= 0 || r === 0) { ctx.moveTo(x, y); ctx.lineTo(x + c, y); }
-      if (!g.isPath(col + 1, r) && col + 1 < CONFIG.cols) { ctx.moveTo(x + c, y); ctx.lineTo(x + c, y + c); }
-      if (!g.isPath(col, r + 1) && r + 1 < CONFIG.rows) { ctx.moveTo(x, y + c); ctx.lineTo(x + c, y + c); }
-      if (!g.isPath(col - 1, r) && col - 1 >= 0) { ctx.moveTo(x, y); ctx.lineTo(x, y + c); }
+      const open = (cc, rr) => g.map.waypoints.some(([wc, wr]) => wc === cc && wr === rr); // waypoint fuori schermo = varco
+      if (!g.isPath(col, r - 1) && !(r === 0 && open(col, -1))) { ctx.moveTo(x, y); ctx.lineTo(x + c, y); }
+      if (!g.isPath(col + 1, r) && !(col === CONFIG.cols - 1 && open(CONFIG.cols, r))) { ctx.moveTo(x + c, y); ctx.lineTo(x + c, y + c); }
+      if (!g.isPath(col, r + 1) && !(r === CONFIG.rows - 1 && open(col, CONFIG.rows))) { ctx.moveTo(x, y + c); ctx.lineTo(x + c, y + c); }
+      if (!g.isPath(col - 1, r) && !(col === 0 && open(-1, r))) { ctx.moveTo(x, y); ctx.lineTo(x, y + c); }
     }
     ctx.stroke();
   }
@@ -156,11 +160,48 @@ class Renderer {
   draw(dt) {
     this.time += dt;
     const ctx = this.ctx, g = this.game, c = g.cell;
+    ctx.save();
+    if (g.shake > 0) {
+      const k = g.shake * 10;
+      ctx.translate((Math.random() - 0.5) * k, (Math.random() - 0.5) * k);
+    }
     ctx.drawImage(this.background, 0, 0);
     ctx.textAlign = "center"; ctx.textBaseline = "middle";
 
+    // pozze di fuoco (sotto a tutto)
+    for (const fx of g.effects) {
+      if (fx.kind !== "fire") continue;
+      const k = fx.life / fx.maxLife;
+      const flicker = 0.9 + Math.sin(this.time * 18 + fx.seed) * 0.1;
+      const rg = ctx.createRadialGradient(fx.x, fx.y, 2, fx.x, fx.y, fx.radius * flicker);
+      rg.addColorStop(0, `rgba(255,230,120,${0.85 * Math.min(1, k * 2)})`);
+      rg.addColorStop(0.5, `rgba(255,120,40,${0.6 * Math.min(1, k * 2)})`);
+      rg.addColorStop(1, "rgba(255,60,20,0)");
+      ctx.fillStyle = rg;
+      ctx.beginPath(); ctx.arc(fx.x, fx.y, fx.radius * flicker, 0, Math.PI * 2); ctx.fill();
+      // fiammelle
+      for (let i = 0; i < 5; i++) {
+        const a = fx.seed + i * 1.3 + this.time * 2, rr = fx.radius * 0.5;
+        const fxp = fx.x + Math.cos(a) * rr, fyp = fx.y + Math.sin(a) * rr - Math.abs(Math.sin(this.time * 9 + i)) * 8;
+        ctx.font = "12px sans-serif"; ctx.globalAlpha = Math.min(1, k * 2) * 0.9;
+        ctx.fillText("🔥", fxp, fyp);
+        ctx.globalAlpha = 1;
+      }
+    }
+
+    // mira abilità
+    if (g.aiming && g.hoverPos) {
+      const def = ABILITIES[g.aiming];
+      const rg = ctx.createRadialGradient(g.hoverPos.x, g.hoverPos.y, 0, g.hoverPos.x, g.hoverPos.y, def.radius);
+      rg.addColorStop(0, "rgba(255,140,40,0.15)"); rg.addColorStop(1, "rgba(255,140,40,0.4)");
+      ctx.fillStyle = rg;
+      ctx.beginPath(); ctx.arc(g.hoverPos.x, g.hoverPos.y, def.radius, 0, Math.PI * 2); ctx.fill();
+      ctx.strokeStyle = "rgba(255,200,80,0.95)"; ctx.lineWidth = 2; ctx.setLineDash([6, 6]); ctx.stroke(); ctx.setLineDash([]);
+      ctx.font = "26px sans-serif"; ctx.fillText(def.emoji, g.hoverPos.x, g.hoverPos.y);
+    }
+
     // hover su cella edificabile (anche senza torre selezionata)
-    if (g.hoverCell && !g.placing && g.canBuild(g.hoverCell.col, g.hoverCell.row)) {
+    if (g.hoverCell && !g.placing && !g.aiming && g.canBuild(g.hoverCell.col, g.hoverCell.row)) {
       ctx.fillStyle = "rgba(255,255,255,0.10)";
       this.roundRect(ctx, g.hoverCell.col * c + 3, g.hoverCell.row * c + 3, c - 6, c - 6, 8); ctx.fill();
     }
@@ -234,6 +275,21 @@ class Renderer {
         ctx.fillStyle = fx.color;
         ctx.beginPath(); ctx.arc(fx.x, fx.y, fx.radius, 0, Math.PI * 2); ctx.fill();
         ctx.globalAlpha = 1;
+      } else if (fx.kind === "stun") {
+        ctx.globalAlpha = k;
+        ctx.font = "16px sans-serif";
+        ctx.fillText("💫", fx.x, fx.y - fx.radius * (1.6 - k));
+        ctx.globalAlpha = 1;
+      } else if (fx.kind === "blink") {
+        ctx.globalAlpha = k * 0.8;
+        ctx.strokeStyle = fx.color; ctx.lineWidth = 3;
+        ctx.beginPath(); ctx.arc(fx.x, fx.y, fx.radius * (1.6 - k), 0, Math.PI * 2); ctx.stroke();
+        ctx.globalAlpha = 1;
+      } else if (fx.kind === "shout") {
+        ctx.globalAlpha = k * 0.35;
+        ctx.fillStyle = fx.color === "#fff" ? "#ff5a3c" : fx.color;
+        ctx.fillRect(0, 0, g.width, g.height);
+        ctx.globalAlpha = 1;
       }
     }
 
@@ -256,10 +312,16 @@ class Renderer {
       ctx.font = "600 40px Fredoka, sans-serif";
       ctx.fillText("⏸  PAUSA", g.width / 2, g.height / 2);
     }
+    ctx.restore();
   }
 
   drawTower(t, selected) {
     const ctx = this.ctx, c = this.game.cell;
+    if (this.game.rateMult > 1) {
+      const rg = ctx.createRadialGradient(t.x, t.y, c * 0.3, t.x, t.y, c * 0.6);
+      rg.addColorStop(0, "rgba(255,194,71,0.45)"); rg.addColorStop(1, "rgba(255,194,71,0)");
+      ctx.fillStyle = rg; ctx.beginPath(); ctx.arc(t.x, t.y, c * 0.6, 0, Math.PI * 2); ctx.fill();
+    }
     // ombra
     ctx.fillStyle = "rgba(0,0,0,0.28)";
     ctx.beginPath(); ctx.ellipse(t.x, t.y + c * 0.36, c * 0.36, c * 0.14, 0, 0, Math.PI * 2); ctx.fill();
@@ -310,6 +372,10 @@ class Renderer {
     if (e.slowFactor < 1) {
       ctx.font = "12px sans-serif";
       ctx.fillText("❄️", e.x + e.size * 0.45, e.y - e.size * 0.45 + bob);
+    }
+    if (e.stunned) {
+      ctx.font = "13px sans-serif";
+      ctx.fillText("💫", e.x - e.size * 0.45, e.y - e.size * 0.5 + Math.sin(this.time * 6) * 2);
     }
     // barra HP arrotondata
     const w = Math.max(24, e.size * 1.25), h = 5;

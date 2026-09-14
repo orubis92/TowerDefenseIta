@@ -9,12 +9,6 @@
   const renderer = new Renderer(canvas, game);
   const ui = new UI(game, canvas);
 
-  ui.showOverlay(
-    "Trattoria Defense",
-    "I clienti sgraditi stanno entrando: ananas sulla pizza, ketchup sulla pasta, cappuccini dopo pranzo…\nSchiera la brigata di cucina e non farli arrivare in sala!",
-    "Inizia il servizio"
-  );
-
   let last = performance.now();
   function frame(now) {
     let dt = (now - last) / 1000;

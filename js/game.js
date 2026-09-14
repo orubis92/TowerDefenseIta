@@ -2,14 +2,40 @@
    Stato di gioco e logica di aggiornamento
    ========================================================== */
 
+/* --- salvataggio progressi (localStorage) --- */
+const SaveData = {
+  load() {
+    try { return JSON.parse(localStorage.getItem(CONFIG.saveKey)) || { maps: {} }; }
+    catch (e) { return { maps: {} }; }
+  },
+  save(data) {
+    try { localStorage.setItem(CONFIG.saveKey, JSON.stringify(data)); } catch (e) { /* privato/quota */ }
+  },
+  forMap(key) {
+    const d = this.load();
+    return d.maps[key] || { stars: 0, bestWave: 0, bestScore: 0, wins: 0 };
+  },
+  record(key, result) {
+    const d = this.load();
+    const m = d.maps[key] || { stars: 0, bestWave: 0, bestScore: 0, wins: 0 };
+    const before = { ...m };
+    m.stars = Math.max(m.stars, result.stars || 0);
+    m.bestWave = Math.max(m.bestWave, result.wave || 0);
+    m.bestScore = Math.max(m.bestScore, result.score || 0);
+    if (result.won) m.wins++;
+    d.maps[key] = m;
+    this.save(d);
+    return { newWave: m.bestWave > before.bestWave, newScore: m.bestScore > before.bestScore, newStars: m.stars > before.stars };
+  },
+};
+
 class Game {
   constructor() {
     this.cell = CONFIG.cell;
     this.width = CONFIG.cols * this.cell;
     this.height = CONFIG.rows * this.cell;
-    this.buildMap();
-    this.reset();
     this.listeners = {};
+    this.loadMap(MAP_ORDER[0]);
   }
 
   /* --- eventi verso la UI --- */
@@ -17,10 +43,17 @@ class Game {
   emit(evt, data) { (this.listeners[evt] || []).forEach(fn => fn(data)); }
 
   /* --- mappa --- */
+  loadMap(key) {
+    this.mapKey = key;
+    this.map = MAPS[key];
+    this.buildMap();
+    this.reset();
+    this.emit("map-loaded", key);
+  }
+
   buildMap() {
-    const c = this.cell;
+    const c = this.cell, MAP = this.map;
     this.path = MAP.waypoints.map(([col, row]) => ({ x: (col + 0.5) * c, y: (row + 0.5) * c }));
-    // celle occupate dal percorso
     this.pathCells = new Set();
     for (let i = 0; i < MAP.waypoints.length - 1; i++) {
       const [c0, r0] = MAP.waypoints[i];
@@ -34,10 +67,6 @@ class Game {
       }
     }
     this.blockedCells = new Set(MAP.blocked.map(([c, r]) => `${c},${r}`));
-    this.pathLength = 0;
-    for (let i = 1; i < this.path.length; i++) {
-      this.pathLength += dist(this.path[i - 1].x, this.path[i - 1].y, this.path[i].x, this.path[i].y);
-    }
   }
 
   isPath(col, row) { return this.pathCells.has(`${col},${row}`); }
@@ -54,25 +83,48 @@ class Game {
     this.lives = CONFIG.startLives;
     this.wave = 0;                 // ondata corrente (1-based; 0 = non iniziata)
     this.state = "idle";           // idle | wave | won | lost
+    this.endless = false;          // true dopo aver scelto di continuare oltre l'ondata 10
     this.towers = [];
     this.enemies = [];
     this.projectiles = [];
     this.effects = [];
     this.texts = [];
-    this.spawnQueue = [];          // {type, at} in secondi dall'inizio ondata
+    this.spawnQueue = [];
     this.waveClock = 0;
     this.speed = 1;
     this.paused = false;
-    this.selectedTower = null;     // torre selezionata sulla mappa
-    this.placing = null;           // tipo di torre da piazzare
+    this.selectedTower = null;
+    this.placing = null;
+    this.aiming = null;            // abilità in attesa di un bersaglio
     this.hoverCell = null;
+    this.hoverPos = null;
     this.totalKills = 0;
+    this.time = 0;
+    this.abilities = {};
+    for (const k of Object.keys(ABILITIES)) this.abilities[k] = { cooldown: 0, active: 0 };
+    this.rateMult = 1;
+    this.shake = 0;
+    this.result = null;
+  }
+
+  /* --- punteggio --- */
+  get score() {
+    return this.totalKills * CONFIG.score.kill + this.wavesCleared * CONFIG.score.wave + this.lives * CONFIG.score.life;
+  }
+  get wavesCleared() { return this.state === "wave" ? this.wave - 1 : this.wave; }
+  get stars() {
+    if (this.wavesCleared < CONFIG.storyWaves) return 0;
+    return this.lives >= 15 ? 3 : this.lives >= 8 ? 2 : 1;
   }
 
   /* --- ondate --- */
-  get waveCount() { return WAVES.length; }
-  get nextWaveIndex() { return this.wave; } // indice 0-based della prossima ondata
-  get canStartWave() { return (this.state === "idle") && this.wave < WAVES.length; }
+  get waveCount() { return CONFIG.storyWaves; }
+  get canStartWave() { return this.state === "idle" && (this.endless || this.wave < CONFIG.storyWaves); }
+
+  waveDef(n) {
+    if (n <= CONFIG.storyWaves) return WAVES[n - 1];
+    return generateEndlessWave(n, this.map.boss);
+  }
 
   startWave() {
     if (!this.canStartWave) return false;
@@ -80,44 +132,103 @@ class Game {
     this.state = "wave";
     this.waveClock = 0;
     this.spawnQueue = [];
-    const def = WAVES[this.wave - 1];
+    const def = this.waveDef(this.wave);
     let t = 0;
     for (const g of def.groups) {
       t += g.delay || 0;
+      const type = g.type === "boss" ? this.map.boss : g.type;
       for (let i = 0; i < g.count; i++) {
-        this.spawnQueue.push({ type: g.type, at: t });
+        this.spawnQueue.push({ type, at: t });
         t += g.interval;
       }
     }
     this.waveTotal = this.spawnQueue.length;
-    this.hpMult = 1 + CONFIG.hpScalePerWave * (this.wave - 1);
+    const story = Math.min(this.wave, CONFIG.storyWaves);
+    let mult = (1 + CONFIG.hpScalePerWave * (story - 1)) * this.map.difficulty;
+    if (this.wave > CONFIG.storyWaves) mult *= 1 + CONFIG.endless.hpScalePerWave * (this.wave - CONFIG.storyWaves);
+    this.hpMult = mult;
     this.emit("wave-start", this.wave);
     return true;
   }
 
-  spawn(type) {
+  spawn(type, like) {
     const e = new Enemy(type, this.path, this.hpMult);
+    if (like) e.placeLike(like, 24);
     this.enemies.push(e);
+    return e;
   }
 
   endWave() {
     const bonus = CONFIG.waveBonusBase + this.wave * CONFIG.waveBonusPerWave;
     this.gold += bonus;
     this.texts.push(new FloatingText(`Ondata ${this.wave} respinta! +${bonus}💰`, this.width / 2, this.height / 2, "#ffe28a"));
-    if (this.wave >= WAVES.length) {
+    if (this.wave === CONFIG.storyWaves && !this.endless) {
       this.state = "won";
-      this.emit("won");
+      this.finish(true);
     } else {
       this.state = "idle";
+      // in modalità infinita il record di ondate si aggiorna subito
+      if (this.endless) SaveData.record(this.mapKey, { wave: this.wave, score: this.score });
       this.emit("wave-end", this.wave);
     }
+  }
+
+  /* chiude la partita e registra il record */
+  finish(won) {
+    const result = { won, wave: this.wavesCleared, score: this.score, stars: won ? this.stars : 0, kills: this.totalKills, lives: this.lives, endless: this.endless };
+    result.records = SaveData.record(this.mapKey, result);
+    this.result = result;
+    this.emit(won ? "won" : "lost", result);
+  }
+
+  /* dopo la vittoria: prosegue in modalità infinita */
+  continueEndless() {
+    if (this.state !== "won") return;
+    this.endless = true;
+    this.state = "idle";
+    this.emit("change");
+  }
+
+  /* --- abilità --- */
+  useAbility(key, x, y) {
+    const def = ABILITIES[key], st = this.abilities[key];
+    if (!def || st.cooldown > 0 || this.state !== "wave") return false;
+    if (def.aim && x === undefined) { this.aiming = key; this.placing = null; this.selectedTower = null; this.emit("change"); return true; }
+    this.aiming = null;
+    st.cooldown = def.cooldown;
+    if (key === "mammamia") {
+      for (const e of this.enemies) { e.applyStun(def.stun); this.effects.push(new Effect("stun", e.x, e.y, 16)); }
+      this.effects.push(new Effect("shout", this.width / 2, this.height / 2, 60, { life: 0.8 }));
+      this.shake = 0.4;
+    } else if (key === "espresso") {
+      st.active = def.duration;
+      this.effects.push(new Effect("shout", this.width / 2, this.height / 2, 60, { life: 0.6, color: "#ffc247" }));
+    } else if (key === "olio") {
+      for (const e of this.enemies) {
+        if (dist(x, y, e.x, e.y) <= def.radius) e.takeDamage(def.dmg, true);
+      }
+      this.effects.push(new Effect("ring", x, y, def.radius, { life: 0.45 }));
+      this.effects.push(new Effect("fire", x, y, def.burnRadius, { life: def.burnTime, dps: def.burnDps }));
+      this.shake = 0.25;
+    }
+    this.emit("ability", key);
+    this.emit("change");
+    return true;
   }
 
   /* --- azioni giocatore --- */
   selectShop(type) {
     this.placing = (this.placing === type) ? null : type;
     this.selectedTower = null;
+    this.aiming = null;
     this.emit("change");
+  }
+
+  cancel() { this.placing = null; this.selectedTower = null; this.aiming = null; this.emit("change"); }
+
+  clickAt(x, y) {
+    if (this.aiming) { this.useAbility(this.aiming, x, y); return; }
+    this.clickCell(Math.floor(x / this.cell), Math.floor(y / this.cell));
   }
 
   clickCell(col, row) {
@@ -136,7 +247,6 @@ class Game {
       const t = new Tower(this.placing, col, row);
       this.towers.push(t);
       this.texts.push(new FloatingText(`-${def.cost}💰`, t.x, t.y - 10, "#ffb0a0"));
-      // mantieni la modalità di piazzamento se si può ancora permettere
       if (this.gold < def.cost) this.placing = null;
       this.emit("change");
       return;
@@ -177,6 +287,14 @@ class Game {
       return;
     }
     const dt = rawDt * this.speed;
+    this.time += dt;
+
+    // abilità: ricariche e durate
+    this.rateMult = 1;
+    for (const [k, st] of Object.entries(this.abilities)) {
+      if (st.cooldown > 0) st.cooldown = Math.max(0, st.cooldown - dt);
+      if (st.active > 0) { st.active = Math.max(0, st.active - dt); if (k === "espresso" && st.active > 0) this.rateMult = ABILITIES.espresso.rateMult; }
+    }
 
     // spawn
     if (this.state === "wave") {
@@ -187,27 +305,43 @@ class Game {
     }
 
     // nemici
+    const endP = this.path[this.path.length - 1];
     for (const e of this.enemies) {
       e.update(dt);
+      if (e.justBlinked) this.effects.push(new Effect("blink", e.x, e.y, e.size, { life: 0.35, color: e.def.color }));
       if (e.reachedEnd) {
         this.lives -= e.livesCost;
-        this.texts.push(new FloatingText(`-${e.livesCost}❤️`, this.path[this.path.length - 1].x - 30, this.path[this.path.length - 1].y - 20, "#ff7b6b"));
+        this.texts.push(new FloatingText(`-${e.livesCost}❤️`, Math.min(Math.max(endP.x, 40), this.width - 40), Math.min(Math.max(endP.y - 20, 20), this.height - 20), "#ff7b6b"));
+        this.shake = Math.max(this.shake, 0.2);
         if (this.lives <= 0) {
           this.lives = 0;
           this.state = "lost";
-          this.emit("lost");
+          this.finish(false);
+        }
+      }
+    }
+
+    // pozze di fuoco
+    for (const fx of this.effects) {
+      if (fx.kind !== "fire") continue;
+      for (const e of this.enemies) {
+        if (e.dead || e.reachedEnd) continue;
+        if (dist(fx.x, fx.y, e.x, e.y) <= fx.radius + e.size * 0.3) {
+          e.takeDamage(fx.dps * dt, true);
+          if (e.dead && fx.owner) fx.owner.kills++;
         }
       }
     }
 
     // torri
-    for (const t of this.towers) t.update(dt, this.enemies, this.projectiles);
+    for (const t of this.towers) t.update(dt, this.enemies, this.projectiles, this.rateMult);
 
     // proiettili
     for (const p of this.projectiles) p.update(dt, this.enemies, this.effects);
     this.projectiles = this.projectiles.filter(p => !p.done);
 
-    // rimozione nemici morti (con ricompensa)
+    // rimozione nemici morti (con ricompensa ed eventuali figli)
+    const spawned = [];
     for (const e of this.enemies) {
       if (e.dead) {
         this.gold += e.reward;
@@ -215,10 +349,15 @@ class Game {
         this.texts.push(new FloatingText(`+${e.reward}`, e.x, e.y - 12));
         this.effects.push(new Effect("pop", e.x, e.y, e.size));
         spawnBurst(this.effects, e.x, e.y, e.def.color || "#ff8a65", e.def.boss ? 40 : 10);
+        if (e.def.boss) this.shake = Math.max(this.shake, 0.5);
+        if (e.def.spawnOnDeath && !e.reachedEnd) {
+          for (let i = 0; i < e.def.spawnOnDeath.count; i++) spawned.push([e.def.spawnOnDeath.type, e]);
+        }
       }
     }
     const before = this.enemies.length;
     this.enemies = this.enemies.filter(e => !e.dead && !e.reachedEnd);
+    for (const [type, like] of spawned) this.spawn(type, like);
     if (before !== this.enemies.length) this.emit("change");
 
     // fine ondata
@@ -231,6 +370,7 @@ class Game {
   }
 
   updateCosmetics(dt) {
+    if (this.shake > 0) this.shake = Math.max(0, this.shake - dt);
     for (const fx of this.effects) fx.update(dt);
     this.effects = this.effects.filter(fx => !fx.done);
     for (const t of this.texts) t.update(dt);

@@ -17,15 +17,35 @@
       <div class="stats">
         <span class="stat" id="stat-gold-box" title="Mance"><span class="ico">💰</span><b id="stat-gold">0</b></span>
         <span class="stat" id="stat-lives-box" title="Clienti soddisfatti"><span class="ico">❤️</span><b id="stat-lives">0</b></span>
-        <span class="stat" id="stat-wave-box" title="Ondata"><span class="ico">🌊</span><b id="stat-wave">0</b><small>/<span id="stat-wave-max">10</span></small></span>
+        <span class="stat" id="stat-wave-box" title="Ondata"><span class="ico">🌊</span><b id="stat-wave">0</b><small id="stat-wave-max-wrap">/<span id="stat-wave-max">10</span></small></span>
+        <span class="stat" id="stat-score-box" title="Punteggio"><span class="ico">🏅</span><b id="stat-score">0</b></span>
       </div>
       <div class="controls">
         <button id="btn-speed" class="btn small" title="Velocità di gioco">⏩ 1×</button>
         <button id="btn-pause" class="btn small" title="Pausa">⏸</button>
+        <button id="btn-menu" class="btn small" title="Torna al menu">☰</button>
       </div>
     </header>
 
-    <main id="main">
+    <!-- ===== Menu livelli ===== -->
+    <section id="menu" class="menu">
+      <div class="menu-inner">
+        <div class="menu-hero">
+          <div class="menu-logo">🍕</div>
+          <h1>Trattoria Defense</h1>
+          <p>I clienti sgraditi stanno entrando: ananas sulla pizza, ketchup sulla pasta, cappuccini dopo pranzo…<br>Scegli il locale, schiera la brigata e non farli arrivare in sala.</p>
+        </div>
+        <div id="level-grid" class="level-grid"></div>
+        <div class="menu-foot">
+          <details class="howto">
+            <summary>Come si gioca</summary>
+            <p>Scegli un cuoco (tasti <b>1–7</b>) e toccalo su una piastrella libera. Tocca una postazione per potenziarla o venderla. <b>Spazio</b> avvia l'ondata. Le abilità speciali (<b>Q W E</b>) hanno una ricarica: usale nei momenti difficili. Dopo l'ondata 10 puoi continuare in <b>modalità infinita</b> e battere il tuo record.</p>
+          </details>
+        </div>
+      </div>
+    </section>
+
+    <main id="main" class="hidden">
       <div id="canvas-wrap">
         <div class="canvas-frame">
           <canvas id="game" width="768" height="480"></canvas>
@@ -33,15 +53,23 @@
             <div class="overlay-card">
               <div class="big" id="overlay-emoji">🍕</div>
               <h1 id="overlay-title">Trattoria Defense</h1>
+              <div id="overlay-stars" class="stars-row hidden"></div>
               <p id="overlay-text"></p>
-              <button id="overlay-btn" class="btn primary">Inizia il servizio</button>
+              <div id="overlay-records" class="records hidden"></div>
+              <div class="overlay-actions">
+                <button id="overlay-btn" class="btn primary">Inizia il servizio</button>
+                <button id="overlay-btn2" class="btn hidden">Menu</button>
+              </div>
             </div>
           </div>
         </div>
-        <div class="wave-bar">
-          <span id="wave-bar-label">Pronti al servizio</span>
-          <div class="track"><div class="fill" id="wave-bar-fill"></div></div>
-          <span id="wave-bar-count"></span>
+        <div class="under-canvas">
+          <div class="wave-bar">
+            <span id="wave-bar-label">Pronti al servizio</span>
+            <div class="track"><div class="fill" id="wave-bar-fill"></div></div>
+            <span id="wave-bar-count"></span>
+          </div>
+          <div id="abilities" class="abilities"></div>
         </div>
       </div>
 

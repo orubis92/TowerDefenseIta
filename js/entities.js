@@ -1,5 +1,5 @@
 /* ==========================================================
-   Entità di gioco: Enemy, Tower, Projectile, FloatingText
+   Entità di gioco: Enemy, Tower, Projectile, Effect, FloatingText
    ========================================================== */
 
 function dist(ax, ay, bx, by) {
@@ -26,39 +26,47 @@ class Enemy {
     this.progress = 0;             // distanza percorsa (per il targeting)
     this.slowFactor = 1;
     this.slowTimer = 0;
+    this.stunTimer = 0;
+    this.blinkTimer = def.blink ? def.blink.every : 0;
+    this.justBlinked = false;
     this.dead = false;
     this.reachedEnd = false;
     this.wobble = Math.random() * Math.PI * 2;
     this.hitFlash = 0;
   }
 
-  get speed() { return this.baseSpeed * this.slowFactor; }
+  get speed() { return this.stunTimer > 0 ? 0 : this.baseSpeed * this.slowFactor; }
+  get stunned() { return this.stunTimer > 0; }
 
   applySlow(factor, time) {
-    // tiene il rallentamento più forte
-    if (1 - factor >= 1 - this.slowFactor || this.slowTimer <= 0) {
-      this.slowFactor = Math.min(this.slowFactor, 1 - factor);
-    }
+    this.slowFactor = Math.min(this.slowFactor, 1 - factor);
     this.slowTimer = Math.max(this.slowTimer, time);
   }
 
-  takeDamage(amount) {
-    const dmg = Math.max(1, amount - this.armor);
+  applyStun(time) {
+    // i boss resistono: metà durata
+    const t = this.def.boss ? time * 0.5 : time;
+    this.stunTimer = Math.max(this.stunTimer, t);
+  }
+
+  takeDamage(amount, ignoreArmor) {
+    const dmg = ignoreArmor ? amount : Math.max(1, amount - this.armor);
     this.hp -= dmg;
     this.hitFlash = 0.12;
     if (this.hp <= 0) this.dead = true;
     return dmg;
   }
 
-  update(dt) {
-    if (this.slowTimer > 0) {
-      this.slowTimer -= dt;
-      if (this.slowTimer <= 0) { this.slowFactor = 1; this.slowTimer = 0; }
-    }
-    if (this.hitFlash > 0) this.hitFlash -= dt;
-    this.wobble += dt * 8;
+  /* posiziona il nemico dove si trova un altro (per gli spawn alla morte) */
+  placeLike(other, jitter) {
+    this.x = other.x + (Math.random() - 0.5) * jitter;
+    this.y = other.y + (Math.random() - 0.5) * jitter;
+    this.wpIndex = other.wpIndex;
+    this.progress = other.progress + (Math.random() - 0.5) * jitter;
+  }
 
-    let remaining = this.speed * dt;
+  advance(distance) {
+    let remaining = distance;
     while (remaining > 0 && this.wpIndex < this.path.length) {
       const target = this.path[this.wpIndex];
       const d = dist(this.x, this.y, target.x, target.y);
@@ -75,6 +83,27 @@ class Enemy {
       }
     }
     if (this.wpIndex >= this.path.length) this.reachedEnd = true;
+  }
+
+  update(dt) {
+    if (this.slowTimer > 0) {
+      this.slowTimer -= dt;
+      if (this.slowTimer <= 0) { this.slowFactor = 1; this.slowTimer = 0; }
+    }
+    if (this.stunTimer > 0) this.stunTimer -= dt;
+    if (this.hitFlash > 0) this.hitFlash -= dt;
+    this.wobble += dt * (this.stunned ? 2 : 8);
+    this.justBlinked = false;
+
+    if (this.def.blink && !this.stunned) {
+      this.blinkTimer -= dt;
+      if (this.blinkTimer <= 0) {
+        this.blinkTimer = this.def.blink.every;
+        this.advance(this.def.blink.distance);
+        this.justBlinked = true;
+      }
+    }
+    this.advance(this.speed * dt);
   }
 }
 
@@ -113,13 +142,15 @@ class Tower {
     for (const e of enemies) {
       if (e.dead || e.reachedEnd) continue;
       if (dist(this.x, this.y, e.x, e.y) <= r) {
-        if (!best || e.progress > best.progress) best = e;
+        // il carabiniere preferisce chi non è già fermo
+        if (this.stats.stun && e.stunned && best && !best.stunned) continue;
+        if (!best || e.progress > best.progress || (this.stats.stun && best.stunned && !e.stunned)) best = e;
       }
     }
     return best;
   }
 
-  update(dt, enemies, projectiles) {
+  update(dt, enemies, projectiles, rateMult) {
     if (this.recoil > 0) this.recoil -= dt;
     this.cooldown -= dt;
     if (this.cooldown > 0) return;
@@ -127,7 +158,7 @@ class Tower {
     if (!target) return;
     this.angle = Math.atan2(target.y - this.y, target.x - this.x);
     projectiles.push(new Projectile(this, target));
-    this.cooldown = 1 / this.stats.rate;
+    this.cooldown = 1 / (this.stats.rate * (rateMult || 1));
     this.recoil = 0.15;
   }
 }
@@ -138,11 +169,14 @@ class Projectile {
     this.target = target;
     this.x = tower.x;
     this.y = tower.y;
-    this.speed = tower.stats.projSpeed;
-    this.dmg = tower.stats.dmg;
-    this.splash = tower.stats.splash || 0;
-    this.slow = tower.stats.slow || 0;
-    this.slowTime = tower.stats.slowTime || 0;
+    const s = tower.stats;
+    this.speed = s.projSpeed;
+    this.dmg = s.dmg;
+    this.splash = s.splash || 0;
+    this.slow = s.slow || 0;
+    this.slowTime = s.slowTime || 0;
+    this.stun = s.stun || 0;
+    this.burn = s.burnDps ? { dps: s.burnDps, time: s.burnTime, radius: s.burnRadius } : null;
     this.emoji = tower.def.projectileEmoji;
     this.spin = 0;
     this.done = false;
@@ -181,7 +215,11 @@ class Projectile {
     for (const e of hits) {
       e.takeDamage(this.dmg);
       if (this.slow > 0) e.applySlow(this.slow, this.slowTime);
+      if (this.stun > 0) { e.applyStun(this.stun); effects.push(new Effect("stun", e.x, e.y, 16)); }
       if (e.dead) this.tower.kills++;
+    }
+    if (this.burn) {
+      effects.push(new Effect("fire", this.x, this.y, this.burn.radius, { life: this.burn.time, dps: this.burn.dps, owner: this.tower }));
     }
   }
 }
@@ -196,7 +234,9 @@ class Effect {
     this.vx = (opts && opts.vx) || 0;
     this.vy = (opts && opts.vy) || 0;
     this.color = (opts && opts.color) || "#fff";
-    this.text = opts && opts.text;
+    this.dps = (opts && opts.dps) || 0;
+    this.owner = opts && opts.owner;
+    this.seed = Math.random() * 100;
   }
   update(dt) {
     this.life -= dt;
