@@ -3,7 +3,7 @@
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0, user-scalable=no">
-  <meta name="theme-color" content="#7a2e1d">
+  <meta name="theme-color" content="#1a0f0b">
   <title>Trattoria Defense</title>
   <link rel="manifest" href="manifest.webmanifest">
   <link rel="icon" href="icons/icon-192.png">
@@ -13,11 +13,11 @@
 <body>
   <div id="app">
     <header id="topbar">
-      <div class="brand">🍕 Trattoria Defense</div>
+      <div class="brand"><span class="logo">🍕</span> Trattoria Defense</div>
       <div class="stats">
-        <span class="stat" title="Mance (oro)">💰 <b id="stat-gold">0</b></span>
-        <span class="stat" title="Clienti soddisfatti (vite)">❤️ <b id="stat-lives">0</b></span>
-        <span class="stat" title="Ondata">🌊 <b id="stat-wave">0</b>/<span id="stat-wave-max">10</span></span>
+        <span class="stat" id="stat-gold-box" title="Mance"><span class="ico">💰</span><b id="stat-gold">0</b></span>
+        <span class="stat" id="stat-lives-box" title="Clienti soddisfatti"><span class="ico">❤️</span><b id="stat-lives">0</b></span>
+        <span class="stat" id="stat-wave-box" title="Ondata"><span class="ico">🌊</span><b id="stat-wave">0</b><small>/<span id="stat-wave-max">10</span></small></span>
       </div>
       <div class="controls">
         <button id="btn-speed" class="btn small" title="Velocità di gioco">⏩ 1×</button>
@@ -27,13 +27,21 @@
 
     <main id="main">
       <div id="canvas-wrap">
-        <canvas id="game" width="768" height="480"></canvas>
-        <div id="overlay" class="overlay hidden">
-          <div class="overlay-card">
-            <h1 id="overlay-title">Trattoria Defense</h1>
-            <p id="overlay-text"></p>
-            <button id="overlay-btn" class="btn primary">Inizia il servizio</button>
+        <div class="canvas-frame">
+          <canvas id="game" width="768" height="480"></canvas>
+          <div id="overlay" class="overlay hidden">
+            <div class="overlay-card">
+              <div class="big" id="overlay-emoji">🍕</div>
+              <h1 id="overlay-title">Trattoria Defense</h1>
+              <p id="overlay-text"></p>
+              <button id="overlay-btn" class="btn primary">Inizia il servizio</button>
+            </div>
           </div>
+        </div>
+        <div class="wave-bar">
+          <span id="wave-bar-label">Pronti al servizio</span>
+          <div class="track"><div class="fill" id="wave-bar-fill"></div></div>
+          <span id="wave-bar-count"></span>
         </div>
       </div>
 
@@ -46,17 +54,20 @@
 
         <section class="panel" id="selection-panel">
           <h2>Postazione</h2>
-          <div id="selection-empty" class="hint">Tocca una postazione per potenziarla o venderla.</div>
+          <div id="selection-empty" class="hint" style="margin:0">Tocca una postazione sulla mappa per potenziarla o venderla.</div>
           <div id="selection-info" class="hidden">
-            <div class="sel-head"><span id="sel-emoji" class="sel-emoji"></span><div><div id="sel-name" class="sel-name"></div><div id="sel-level" class="sel-level"></div></div></div>
+            <div class="sel-head">
+              <span id="sel-emoji" class="sel-emoji"></span>
+              <div><div id="sel-name" class="sel-name"></div><div id="sel-level" class="sel-level"></div></div>
+            </div>
             <ul class="sel-stats">
-              <li>Danno: <b id="sel-dmg"></b></li>
-              <li>Gittata: <b id="sel-range"></b></li>
-              <li>Cadenza: <b id="sel-rate"></b>/s</li>
-              <li>Uccisioni: <b id="sel-kills"></b></li>
+              <li>Danno <b id="sel-dmg"></b></li>
+              <li>Gittata <b id="sel-range"></b></li>
+              <li>Cadenza <b id="sel-rate"></b></li>
+              <li>Eliminati <b id="sel-kills"></b></li>
             </ul>
             <div class="sel-actions">
-              <button id="btn-upgrade" class="btn">⬆️ Potenzia</button>
+              <button id="btn-upgrade" class="btn primary">⬆️ Potenzia</button>
               <button id="btn-sell" class="btn danger">💸 Vendi</button>
             </div>
           </div>

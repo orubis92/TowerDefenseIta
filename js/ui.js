@@ -14,13 +14,13 @@ class UI {
     game.on("wave-start", () => this.refresh());
     game.on("wave-end", () => this.refresh());
     game.on("won", () => this.showOverlay(
-      "Servizio completato! 🎉",
+      "Servizio completato!",
       `Hai respinto tutte le ${game.waveCount} ondate.\nClienti soddisfatti rimasti: ${game.lives}\nPiatti sgraditi eliminati: ${game.totalKills}`,
-      "Rigioca"));
+      "Rigioca", "🏆"));
     game.on("lost", () => this.showOverlay(
-      "La trattoria ha chiuso 😢",
+      "La trattoria ha chiuso",
       `I clienti se ne sono andati all'ondata ${game.wave}.\nPiatti sgraditi eliminati: ${game.totalKills}`,
-      "Riprova"));
+      "Riprova", "😢"));
     this.refresh();
   }
 
@@ -31,7 +31,8 @@ class UI {
     for (const [key, def] of Object.entries(TOWERS)) {
       const b = document.createElement("button");
       b.className = "shop-btn";
-      b.innerHTML = `<div class="emoji">${def.emoji}</div><div class="name">${def.name}</div><div class="cost">💰 ${def.cost}</div><div class="desc">${def.desc}</div>`;
+      const idx = Object.keys(TOWERS).indexOf(key) + 1;
+      b.innerHTML = `<span class="key">${idx}</span><div class="emoji">${def.emoji}</div><div class="name">${def.name}</div><div class="cost">💰 ${def.cost}</div><div class="desc">${def.desc}</div>`;
       b.addEventListener("click", () => this.game.selectShop(key));
       shop.appendChild(b);
       this.shopButtons[key] = b;
@@ -77,11 +78,24 @@ class UI {
     });
   }
 
+  setStat(id, value, anim) {
+    const el = this.$(id);
+    const old = el.textContent;
+    if (old === String(value)) return;
+    el.textContent = value;
+    if (old === "" || old === "0" && value === CONFIG.startGold) return;
+    const box = this.$(id + "-box");
+    const cls = (anim === "hurt" && Number(value) < Number(old)) ? "hurt" : "bump";
+    box.classList.remove("bump", "hurt");
+    void box.offsetWidth; // riavvia l'animazione
+    box.classList.add(cls);
+  }
+
   refresh() {
     const g = this.game;
-    this.$("stat-gold").textContent = g.gold;
-    this.$("stat-lives").textContent = g.lives;
-    this.$("stat-wave").textContent = g.wave;
+    this.setStat("stat-gold", g.gold, "bump");
+    this.setStat("stat-lives", g.lives, "hurt");
+    this.setStat("stat-wave", g.wave, "bump");
     this.$("stat-wave-max").textContent = g.waveCount;
     this.$("btn-speed").textContent = `⏩ ${g.speed}×`;
     this.$("btn-pause").textContent = g.paused ? "▶️" : "⏸";
@@ -102,15 +116,15 @@ class UI {
       const s = t.stats;
       this.$("sel-emoji").textContent = t.def.emoji;
       this.$("sel-name").textContent = t.def.name;
-      this.$("sel-level").textContent = `Livello ${t.level + 1}/${t.def.levels.length}`;
+      this.$("sel-level").innerHTML = `Livello ${t.level + 1}/${t.def.levels.length} <span class="stars">${"★".repeat(t.level + 1)}${"☆".repeat(t.def.levels.length - t.level - 1)}</span>`;
       this.$("sel-dmg").textContent = s.dmg + (s.splash ? ` (area ${s.splash})` : "") + (s.slow ? ` + rallenta ${Math.round(s.slow * 100)}%` : "");
       this.$("sel-range").textContent = s.range;
-      this.$("sel-rate").textContent = s.rate.toFixed(2);
+      this.$("sel-rate").textContent = s.rate.toFixed(2) + "/s";
       this.$("sel-kills").textContent = t.kills;
       const up = this.$("btn-upgrade");
       if (t.maxLevel) { up.textContent = "⭐ Livello massimo"; up.disabled = true; }
-      else { up.textContent = `⬆️ Potenzia (💰 ${t.upgradeCost})`; up.disabled = g.gold < t.upgradeCost; }
-      this.$("btn-sell").textContent = `💸 Vendi (+${t.sellValue})`;
+      else { up.textContent = `⬆️ Potenzia · ${t.upgradeCost}💰`; up.disabled = g.gold < t.upgradeCost; }
+      this.$("btn-sell").textContent = `💸 Vendi · +${t.sellValue}`;
     }
 
     // ondata
@@ -131,10 +145,33 @@ class UI {
     for (const grp of WAVES[idx].groups) counts[grp.type] = (counts[grp.type] || 0) + grp.count;
     const label = g.state === "wave" ? "In sala:" : "Prossimi:";
     box.innerHTML = `<span class="hint" style="margin:0">${label}</span>` + Object.entries(counts)
-      .map(([k, n]) => `<span class="wave-chip" title="${ENEMIES[k].name}">${ENEMIES[k].emoji} ×${n}</span>`).join("");
+      .map(([k, n]) => `<span class="wave-chip${ENEMIES[k].boss ? " boss" : ""}" title="${ENEMIES[k].name}"><span class="e">${ENEMIES[k].emoji}</span>×${n}</span>`).join("");
+    this.renderWaveBar();
   }
 
-  showOverlay(title, text, btnLabel) {
+  renderWaveBar() {
+    const g = this.game;
+    const label = this.$("wave-bar-label"), fill = this.$("wave-bar-fill"), count = this.$("wave-bar-count");
+    if (g.state === "wave") {
+      const total = g.waveTotal || 1;
+      const remaining = g.spawnQueue.length + g.enemies.length;
+      const pct = Math.round((1 - remaining / total) * 100);
+      label.textContent = `Ondata ${g.wave}`;
+      fill.style.width = pct + "%";
+      count.innerHTML = `<b>${remaining}</b> in arrivo`;
+    } else if (g.state === "won") {
+      label.textContent = "Servizio completato"; fill.style.width = "100%"; count.textContent = "";
+    } else if (g.state === "lost") {
+      label.textContent = "Trattoria chiusa"; fill.style.width = "0%"; count.textContent = "";
+    } else {
+      label.textContent = g.wave === 0 ? "Pronti al servizio" : `Ondata ${g.wave} respinta`;
+      fill.style.width = g.wave === 0 ? "0%" : "100%";
+      count.innerHTML = g.wave < g.waveCount ? `prossima: <b>${g.wave + 1}</b>` : "";
+    }
+  }
+
+  showOverlay(title, text, btnLabel, emoji) {
+    this.$("overlay-emoji").textContent = emoji || "🍕";
     this.$("overlay-title").textContent = title;
     this.$("overlay-text").textContent = text;
     this.$("overlay-btn").textContent = btnLabel;

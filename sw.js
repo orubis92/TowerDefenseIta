@@ -1,5 +1,5 @@
 /* Service worker: cache-first per giocare offline */
-const CACHE = "trattoria-defense-v1";
+const CACHE = "trattoria-defense-v2";
 const ASSETS = [
   "./", "./index.html", "./manifest.webmanifest",
   "./css/style.css",

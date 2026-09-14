@@ -187,15 +187,37 @@ class Projectile {
 }
 
 class Effect {
-  constructor(kind, x, y, radius) {
+  constructor(kind, x, y, radius, opts) {
     this.kind = kind;
     this.x = x; this.y = y;
     this.radius = radius;
-    this.life = 0.3;
-    this.maxLife = 0.3;
+    this.maxLife = (opts && opts.life) || 0.3;
+    this.life = this.maxLife;
+    this.vx = (opts && opts.vx) || 0;
+    this.vy = (opts && opts.vy) || 0;
+    this.color = (opts && opts.color) || "#fff";
+    this.text = opts && opts.text;
   }
-  update(dt) { this.life -= dt; }
+  update(dt) {
+    this.life -= dt;
+    if (this.kind === "particle") {
+      this.x += this.vx * dt; this.y += this.vy * dt;
+      this.vy += 320 * dt; // gravità
+      this.vx *= 0.98;
+    }
+  }
   get done() { return this.life <= 0; }
+}
+
+/* esplosione di coriandoli alla morte di un nemico */
+function spawnBurst(effects, x, y, color, n) {
+  for (let i = 0; i < n; i++) {
+    const a = Math.random() * Math.PI * 2, s = 60 + Math.random() * 140;
+    effects.push(new Effect("particle", x, y, 2 + Math.random() * 3, {
+      vx: Math.cos(a) * s, vy: Math.sin(a) * s - 60, life: 0.45 + Math.random() * 0.35,
+      color: Math.random() < 0.5 ? color : "#ffd27a",
+    }));
+  }
 }
 
 class FloatingText {

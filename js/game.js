@@ -89,6 +89,7 @@ class Game {
         t += g.interval;
       }
     }
+    this.waveTotal = this.spawnQueue.length;
     this.hpMult = 1 + CONFIG.hpScalePerWave * (this.wave - 1);
     this.emit("wave-start", this.wave);
     return true;
@@ -213,6 +214,7 @@ class Game {
         this.totalKills++;
         this.texts.push(new FloatingText(`+${e.reward}`, e.x, e.y - 12));
         this.effects.push(new Effect("pop", e.x, e.y, e.size));
+        spawnBurst(this.effects, e.x, e.y, e.def.color || "#ff8a65", e.def.boss ? 40 : 10);
       }
     }
     const before = this.enemies.length;

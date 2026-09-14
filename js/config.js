@@ -94,22 +94,22 @@ const ENEMIES = {
   ananas: {
     name: "Ananas sulla pizza",
     emoji: "🍍",
-    hp: 30, speed: 55, reward: 6, armor: 0, livesCost: 1, size: 22,
+    hp: 30, speed: 55, reward: 6, armor: 0, livesCost: 1, size: 22, color: "#ffd54a",
   },
   ketchup: {
     name: "Ketchup sulla pasta",
     emoji: "🥫",
-    hp: 18, speed: 110, reward: 6, armor: 0, livesCost: 1, size: 20,
+    hp: 18, speed: 110, reward: 6, armor: 0, livesCost: 1, size: 20, color: "#ff4d3a",
   },
   cappuccino: {
     name: "Cappuccino dopo pranzo",
     emoji: "☕",
-    hp: 110, speed: 40, reward: 14, armor: 2, livesCost: 2, size: 24,
+    hp: 110, speed: 40, reward: 14, armor: 2, livesCost: 2, size: 24, color: "#c48a5a",
   },
   carbonara: {
     name: "Carbonara con la panna",
     emoji: "🍝",
-    hp: 800, speed: 32, reward: 120, armor: 4, livesCost: 5, size: 32, boss: true,
+    hp: 800, speed: 32, reward: 120, armor: 4, livesCost: 5, size: 32, boss: true, color: "#fff1b8",
   },
 };
 
