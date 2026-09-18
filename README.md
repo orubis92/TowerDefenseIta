@@ -62,7 +62,7 @@ Per cambiare il bilanciamento o aggiungere torri/nemici/ondate si tocca solo `js
 
 ## Stato e prossimi passi
 
-v0.5: sprite vettoriali per cuochi, nemici e proiettili (niente più emoji nel gioco). v0.4: 3 mappe con menu e salvataggio (stelle, record), 7 torri × 3 livelli, 7 nemici (2 boss), 3 abilità speciali, 10 ondate + modalità infinita, punteggio, audio sintetizzato (effetti + tarantella di sottofondo), velocità 3×, ondate automatiche.
+v0.6: layout per telefono (orizzontale tutto in una schermata, verticale con mappa adattata), piazzamento a due tocchi su touch, pozze di fuoco non cumulabili, ribilanciamento Nonno/Barista. v0.5: sprite vettoriali per cuochi, nemici e proiettili (niente più emoji nel gioco). v0.4: 3 mappe con menu e salvataggio (stelle, record), 7 torri × 3 livelli, 7 nemici (2 boss), 3 abilità speciali, 10 ondate + modalità infinita, punteggio, audio sintetizzato (effetti + tarantella di sottofondo), velocità 3×, ondate automatiche.
 
 Da fare / aperto:
 - Bilanciamento con prove reali (in simulazione tutte le mappe sono vincibili; in modalità infinita una difesa "statica" cede verso l'ondata 15).

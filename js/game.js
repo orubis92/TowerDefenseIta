@@ -336,15 +336,16 @@ class Game {
       }
     }
 
-    // pozze di fuoco
-    for (const fx of this.effects) {
-      if (fx.kind !== "fire") continue;
+    // pozze di fuoco: le pozze sovrapposte non si sommano, conta la più forte
+    const fires = this.effects.filter(fx => fx.kind === "fire");
+    if (fires.length) {
       for (const e of this.enemies) {
         if (e.dead || e.reachedEnd) continue;
-        if (dist(fx.x, fx.y, e.x, e.y) <= fx.radius + e.size * 0.3) {
-          e.takeDamage(fx.dps * dt, true);
-          if (e.dead && fx.owner) fx.owner.kills++;
+        let best = null;
+        for (const fx of fires) {
+          if (dist(fx.x, fx.y, e.x, e.y) <= fx.radius + e.size * 0.3 && (!best || fx.dps > best.dps)) best = fx;
         }
+        if (best) { e.takeDamage(best.dps * dt, true); if (e.dead && best.owner) best.owner.kills++; }
       }
     }
 

@@ -5,7 +5,7 @@
    origine al centro (0,0), y verso il basso.
    ========================================================== */
 const Sprites = (() => {
-  const cache = {};
+  const cache = {}, urls = {};
   const SIZE = 64, SCALE = 2;
   const OUT = "#2b1a14";
 
@@ -292,6 +292,6 @@ const Sprites = (() => {
       const img = this.get(key);
       ctx.drawImage(img, x - size / 2, y - size / 2, size, size);
     },
-    dataUrl(key) { return this.get(key).toDataURL(); },
+    dataUrl(key) { if (!urls[key]) urls[key] = this.get(key).toDataURL(); return urls[key]; },
   };
 })();

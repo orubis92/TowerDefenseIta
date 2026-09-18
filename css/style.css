@@ -87,14 +87,14 @@ body::before {
   flex: 1; position: relative; display: flex; flex-direction: column; align-items: center; gap: 10px; min-width: 0;
 }
 .canvas-frame {
-  position: relative; width: 100%; max-width: 960px;
+  position: relative; width: 100%; max-width: 100%;
   border-radius: 18px; padding: 6px;
   background: linear-gradient(145deg, rgba(255,255,255,.10), rgba(255,255,255,.02));
   border: 1px solid var(--glass-border);
   box-shadow: var(--shadow);
 }
 canvas#game {
-  width: 100%; height: auto; aspect-ratio: 768 / 480; display: block;
+  width: 100%; height: auto; aspect-ratio: 768 / 480; display: block; max-width: 100%;
   border-radius: 12px; background: #d9c2a3;
   touch-action: none; cursor: pointer;
 }
@@ -332,4 +332,71 @@ canvas#game {
   .ab-name { display: none; }
   .ab-key { display: none; }
   .shop .shop-btn:nth-child(n+5) { display: block; }
+}
+
+/* ---------- Telefono: suggerimento rotazione ---------- */
+.rotate-hint { display: none; }
+@media (pointer: coarse) and (orientation: portrait) and (max-width: 700px) {
+  .rotate-hint { display: flex; align-items: center; justify-content: space-between; gap: 8px; width: 100%;
+    background: rgba(255,194,71,.12); border: 1px solid rgba(255,194,71,.4); border-radius: 12px; padding: 6px 10px; font-size: .8rem; color: var(--muted); }
+  .rotate-hint.hidden { display: none; }
+}
+
+/* ---------- Telefono in verticale: barra compatta ---------- */
+@media (max-width: 700px) {
+  #topbar { padding: 6px 10px; gap: 6px; position: static; }
+  .brand { display: none; }
+  .stats { gap: 4px; flex: 1; }
+  .stat { padding: 3px 7px; font-size: .8rem; gap: 3px; }
+  .stat .ico { font-size: .9rem; }
+  .controls .btn.small, .audio-controls .btn.small { padding: 4px 7px; font-size: .8rem; }
+  #main { padding: 8px; gap: 8px; }
+  .under-canvas { gap: 6px; }
+  .wave-bar { padding: 5px 10px; font-size: .78rem; }
+}
+
+/* ---------- Telefono in orizzontale: tutto in una schermata ---------- */
+@media (max-height: 520px) and (orientation: landscape) {
+  #app { min-height: 0; height: 100dvh; overflow: hidden; }
+  #topbar { position: static; padding: 4px 8px; gap: 6px; flex-wrap: nowrap; }
+  .brand { display: none; }
+  .stats { gap: 4px; }
+  .stat { padding: 2px 7px; font-size: .78rem; gap: 3px; }
+  .stat .ico { font-size: .85rem; }
+  .controls .btn.small, .audio-controls .btn.small { padding: 3px 7px; font-size: .78rem; }
+  #main { flex-direction: row; padding: 6px; gap: 8px; height: calc(100dvh - 40px); overflow: hidden; }
+  #canvas-wrap { flex: 0 0 auto; gap: 4px; }
+  .canvas-frame { padding: 4px; border-radius: 12px; }
+  canvas#game { border-radius: 8px; }
+  .under-canvas { gap: 4px; }
+  .wave-bar { padding: 2px 10px; font-size: .72rem; border-radius: 8px; }
+  .wave-bar .track { height: 5px; }
+  .abilities { gap: 4px; }
+  .ability { padding: 3px 6px; gap: 4px; font-size: .72rem; border-radius: 8px; }
+  .ab-emoji { font-size: 1.1rem; }
+  .ab-name, .ab-key { display: none; }
+  .ab-cd { min-width: 1.8em; }
+  #sidebar { flex: 1; width: auto; min-width: 180px; max-height: 100%; overflow-y: auto; position: static; gap: 8px; }
+  .panel { padding: 8px 10px; border-radius: 10px; }
+  .panel h2 { font-size: .75rem; margin-bottom: 6px; }
+  .shop { grid-template-columns: repeat(auto-fill, minmax(64px, 1fr)); gap: 6px; }
+  .shop-btn { padding: 6px 2px 5px; border-radius: 10px; }
+  .shop-btn .emoji { height: 32px; } .shop-btn .emoji img { width: 32px; height: 32px; }
+  .shop-btn .name { font-size: .68rem; margin-top: 2px; }
+  .shop-btn .cost { font-size: .66rem; padding: 1px 6px; }
+  .shop-btn .desc, .shop-btn .key { display: none; }
+  .hint { font-size: .7rem; margin-top: 4px; }
+  .sel-stats { grid-template-columns: 1fr 1fr; gap: 4px; margin: 6px 0; }
+  .sel-stats li { padding: 3px 7px; font-size: .68rem; }
+  .sel-stats li b { font-size: .82rem; }
+  .sel-emoji { width: 44px; height: 44px; } .sel-emoji img { width: 40px; height: 40px; }
+  .sel-name { font-size: .95rem; }
+  .btn.wide { padding: 8px; font-size: .85rem; margin-top: 6px; }
+  .rotate-hint { display: none !important; }
+  .overlay-card { padding: 14px 18px; }
+  .overlay-card .big { font-size: 2rem; margin-bottom: 2px; }
+  .overlay-card h1 { font-size: 1.3rem; margin-bottom: 4px; }
+  .overlay-card p { font-size: .8rem; margin-bottom: 8px; }
+  .stars-row { font-size: 1.6rem; margin: 0 0 2px; }
+  .toast { top: 44px; font-size: .8rem; padding: 6px 12px; }
 }

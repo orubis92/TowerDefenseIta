@@ -144,6 +144,8 @@ class UI {
       if (g.state === "wave" && !confirm("Abbandonare la partita in corso?")) return;
       this.showMenu();
     });
+    this.$("rotate-hint-close").addEventListener("click", () => { this.$("rotate-hint").classList.add("hidden"); try { localStorage.setItem("trattoria-rotate-hint", "1"); } catch (e) { /* ignora */ } });
+    try { if (localStorage.getItem("trattoria-rotate-hint")) this.$("rotate-hint").classList.add("hidden"); } catch (e) { /* ignora */ }
     this.$("btn-upgrade").addEventListener("click", () => g.upgradeSelected());
     this.$("btn-sell").addEventListener("click", () => g.sellSelected());
     this.$("overlay-btn").addEventListener("click", () => this.overlayAction && this.overlayAction());
@@ -161,12 +163,21 @@ class UI {
       g.hoverCell = { col: Math.floor(p.x / g.cell), row: Math.floor(p.y / g.cell) };
     };
     this.canvas.addEventListener("pointermove", setHover);
-    this.canvas.addEventListener("pointerleave", () => { g.hoverCell = null; g.hoverPos = null; });
+    this.canvas.addEventListener("pointerleave", ev => { if (ev.pointerType === "touch") return; g.hoverCell = null; g.hoverPos = null; });
     this.canvas.addEventListener("pointerdown", ev => {
       ev.preventDefault();
-      setHover(ev);
       const p = toPos(ev);
+      const cell = { col: Math.floor(p.x / g.cell), row: Math.floor(p.y / g.cell) };
+      // su touch: primo tocco = anteprima (raggio + validità), secondo tocco sulla stessa cella = conferma
+      if (ev.pointerType === "touch" && (g.placing || g.aiming)) {
+        const same = g.hoverCell && g.hoverCell.col === cell.col && g.hoverCell.row === cell.row;
+        setHover(ev);
+        if (!same) { this.refresh(); return; }
+      } else {
+        setHover(ev);
+      }
       g.clickAt(p.x, p.y);
+      if (ev.pointerType === "touch") { g.hoverCell = null; g.hoverPos = null; }
     });
     this.canvas.addEventListener("contextmenu", ev => { ev.preventDefault(); g.cancel(); });
 
@@ -223,10 +234,11 @@ class UI {
       b.classList.toggle("selected", g.placing === key);
       b.disabled = g.gold < TOWERS[key].cost && g.placing !== key;
     }
+    const touch = window.matchMedia("(pointer: coarse)").matches;
     this.$("shop-hint").textContent = g.aiming
-      ? `Tocca un punto della mappa per usare ${ABILITIES[g.aiming].name}. (Esc per annullare)`
+      ? (touch ? `Tocca un punto per l'anteprima, poi di nuovo per usare ${ABILITIES[g.aiming].name}.` : `Tocca un punto della mappa per usare ${ABILITIES[g.aiming].name}. (Esc per annullare)`)
       : g.placing
-        ? `Tocca una piastrella libera per piazzare ${TOWERS[g.placing].name}. (Esc per annullare)`
+        ? (touch ? `Tocca una piastrella per l'anteprima, poi di nuovo per piazzare ${TOWERS[g.placing].name}.` : `Tocca una piastrella libera per piazzare ${TOWERS[g.placing].name}. (Esc per annullare)`)
         : "Scegli un cuoco, poi tocca una piastrella libera per piazzarlo.";
 
     // selezione

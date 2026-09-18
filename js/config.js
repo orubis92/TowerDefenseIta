@@ -121,9 +121,9 @@ const TOWERS = {
     name: "Barista", emoji: "☕", projectileEmoji: "🫘",
     desc: "Raffica di chicchi: tanti colpi leggeri.", cost: 90,
     levels: [
-      { dmg: 5, range: 105, rate: 4.0, projSpeed: 380 },
-      { dmg: 8, range: 115, rate: 4.5, projSpeed: 400, cost: 70 },
-      { dmg: 13, range: 125, rate: 5.0, projSpeed: 420, cost: 120 },
+      { dmg: 7, range: 105, rate: 4.0, projSpeed: 380 },
+      { dmg: 11, range: 115, rate: 4.5, projSpeed: 400, cost: 70 },
+      { dmg: 17, range: 125, rate: 5.0, projSpeed: 420, cost: 120 },
     ],
   },
   carabiniere: {
@@ -139,9 +139,9 @@ const TOWERS = {
     name: "Nonno", emoji: "👴", projectileEmoji: "🥃",
     desc: "Grappa in fiamme: brucia il percorso.", cost: 120,
     levels: [
-      { dmg: 10, range: 110, rate: 0.5, projSpeed: 240, burnDps: 18, burnTime: 2.5, burnRadius: 34 },
-      { dmg: 16, range: 120, rate: 0.55, projSpeed: 250, burnDps: 30, burnTime: 3.0, burnRadius: 38, cost: 90 },
-      { dmg: 25, range: 130, rate: 0.6, projSpeed: 260, burnDps: 50, burnTime: 3.5, burnRadius: 44, cost: 150 },
+      { dmg: 10, range: 110, rate: 0.5, projSpeed: 240, burnDps: 16, burnTime: 2.5, burnRadius: 34 },
+      { dmg: 16, range: 120, rate: 0.55, projSpeed: 250, burnDps: 26, burnTime: 3.0, burnRadius: 38, cost: 90 },
+      { dmg: 25, range: 130, rate: 0.6, projSpeed: 260, burnDps: 42, burnTime: 3.5, burnRadius: 44, cost: 150 },
     ],
   },
 };
