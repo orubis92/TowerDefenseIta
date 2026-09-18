@@ -23,7 +23,7 @@ e poi aprire `http://localhost:8080`.
 - **Abilità speciali** (`Q` `W` `E`) con ricarica: *Mamma mia!* blocca tutti i nemici, *Espresso* raddoppia la cadenza delle torri, *Olio bollente* danneggia un'area a scelta e lascia una pozza di fuoco.
 - Ogni nemico che arriva in **SALA** toglie clienti soddisfatti (vite). A zero, la trattoria chiude.
 - Dopo l'ondata 10 puoi continuare in **modalità infinita**: ondate generate sempre più dure, boss ogni 5, record di ondata e punteggio per locale.
-- `⏩` cambia velocità 1×/2×, `⏸` mette in pausa, `☰` torna al menu.
+- `⏩` cambia velocità 1×/2×/3×, `⏱` avvia da solo l'ondata successiva dopo 4 s, `⏸` mette in pausa, `☰` torna al menu. `🔊` e `🎵` accendono/spengono effetti e musica (preferenze salvate).
 
 ## Brigata
 
@@ -47,6 +47,8 @@ e poi aprire `http://localhost:8080`.
 index.html            layout e pannelli
 css/style.css         stile, responsive (colonna unica sotto 860px)
 js/config.js          TUTTI i numeri: mappe, torri, abilità, nemici, ondate, generatore infinito
+js/sprites.js         personaggi e proiettili disegnati a codice (canvas), stessi su ogni sistema
+js/audio.js           effetti e musica sintetizzati con Web Audio (nessun file audio)
 js/entities.js        Enemy, Tower, Projectile, Effect, FloatingText
 js/game.js            stato, ondate, azioni del giocatore, update loop
 js/render.js          disegno su canvas (sfondo pre-renderizzato)
@@ -60,10 +62,8 @@ Per cambiare il bilanciamento o aggiungere torri/nemici/ondate si tocca solo `js
 
 ## Stato e prossimi passi
 
-v0.3: 3 mappe con menu e salvataggio (stelle, record), 7 torri × 3 livelli, 7 nemici (2 boss), 3 abilità speciali, 10 ondate + modalità infinita, punteggio.
+v0.5: sprite vettoriali per cuochi, nemici e proiettili (niente più emoji nel gioco). v0.4: 3 mappe con menu e salvataggio (stelle, record), 7 torri × 3 livelli, 7 nemici (2 boss), 3 abilità speciali, 10 ondate + modalità infinita, punteggio, audio sintetizzato (effetti + tarantella di sottofondo), velocità 3×, ondate automatiche.
 
 Da fare / aperto:
 - Bilanciamento con prove reali (in simulazione tutte le mappe sono vincibili; in modalità infinita una difesa "statica" cede verso l'ondata 15).
-- Suoni ed effetti audio.
-- Sprite disegnati al posto delle emoji (le emoji dipendono dal sistema operativo).
 - Cache del service worker: alzare la versione in `sw.js` a ogni rilascio.

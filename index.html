@@ -20,8 +20,13 @@
         <span class="stat" id="stat-wave-box" title="Ondata"><span class="ico">🌊</span><b id="stat-wave">0</b><small id="stat-wave-max-wrap">/<span id="stat-wave-max">10</span></small></span>
         <span class="stat" id="stat-score-box" title="Punteggio"><span class="ico">🏅</span><b id="stat-score">0</b></span>
       </div>
+      <div class="audio-controls">
+        <button id="btn-sfx" class="btn small" title="Effetti sonori">🔊</button>
+        <button id="btn-music" class="btn small" title="Musica">🎵</button>
+      </div>
       <div class="controls">
-        <button id="btn-speed" class="btn small" title="Velocità di gioco">⏩ 1×</button>
+        <button id="btn-speed" class="btn small" title="Velocità di gioco (1×/2×/3×)">⏩ 1×</button>
+        <button id="btn-auto" class="btn small toggle" title="Avvio automatico delle ondate">⏱</button>
         <button id="btn-pause" class="btn small" title="Pausa">⏸</button>
         <button id="btn-menu" class="btn small" title="Torna al menu">☰</button>
       </div>
@@ -113,6 +118,8 @@
   </div>
 
   <script src="js/config.js"></script>
+  <script src="js/sprites.js"></script>
+  <script src="js/audio.js"></script>
   <script src="js/entities.js"></script>
   <script src="js/game.js"></script>
   <script src="js/render.js"></script>

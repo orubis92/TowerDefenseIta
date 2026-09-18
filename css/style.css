@@ -76,7 +76,9 @@ body::before {
 @keyframes bump { 0% { transform: scale(1) } 40% { transform: scale(1.18) } 100% { transform: scale(1) } }
 @keyframes hurt { 0%, 100% { transform: translateX(0); background: var(--glass-2) } 20% { transform: translateX(-4px); background: rgba(224,74,58,.5) } 60% { transform: translateX(4px) } }
 
-.controls { display: flex; gap: 8px; }
+.controls, .audio-controls { display: flex; gap: 8px; }
+.btn.off { opacity: .45; text-decoration: line-through; }
+.btn.toggle.on { border-color: var(--green); background: rgba(126,211,107,.2); box-shadow: 0 0 0 2px rgba(126,211,107,.2); }
 
 /* ---------- Layout ---------- */
 #main { flex: 1; display: flex; gap: 16px; padding: 16px; min-height: 0; }
@@ -143,7 +145,8 @@ canvas#game {
   box-shadow: 0 0 0 2px rgba(255,90,60,.35), 0 10px 22px rgba(0,0,0,.35);
 }
 .shop-btn:disabled { opacity: .4; cursor: not-allowed; transform: none; box-shadow: none; }
-.shop-btn .emoji { font-size: 2.2rem; line-height: 1; filter: drop-shadow(0 4px 6px rgba(0,0,0,.4)); transition: transform .15s; }
+.shop-btn .emoji { height: 46px; display: flex; justify-content: center; filter: drop-shadow(0 4px 6px rgba(0,0,0,.4)); transition: transform .15s; }
+.shop-btn .emoji img { height: 46px; width: 46px; image-rendering: auto; }
 .shop-btn:hover .emoji { transform: scale(1.12) rotate(-6deg); }
 .shop-btn .name { font-family: var(--font-head); font-weight: 600; font-size: .95rem; margin-top: 6px; }
 .shop-btn .cost { display: inline-block; margin-top: 4px; padding: 2px 8px; border-radius: 999px; background: rgba(255,194,71,.18); color: var(--accent-2); font-size: .78rem; font-weight: 800; }
@@ -172,6 +175,7 @@ canvas#game {
 
 /* selection */
 .sel-head { display: flex; align-items: center; gap: 12px; }
+.sel-emoji img { width: 54px; height: 54px; }
 .sel-emoji {
   font-size: 2.4rem; width: 60px; height: 60px; display: grid; place-items: center;
   background: radial-gradient(circle at 30% 30%, rgba(255,255,255,.18), rgba(255,255,255,.03));
@@ -195,6 +199,7 @@ canvas#game {
   border-radius: 999px; padding: 4px 10px; font-size: .85rem; font-weight: 800;
 }
 .wave-chip .e { font-size: 1.05rem; }
+.wave-chip img.e { width: 22px; height: 22px; margin: -4px 0; }
 .wave-chip.boss { border-color: var(--accent); background: rgba(255,90,60,.2); animation: pulse 1.6s infinite; }
 
 /* ---------- Overlay ---------- */
@@ -239,7 +244,8 @@ canvas#game {
   .shop { grid-template-columns: repeat(4, 1fr); gap: 8px; }
   .shop-btn { padding: 10px 4px 8px; }
   .shop-btn .desc { display: none; }
-  .shop-btn .emoji { font-size: 1.8rem; }
+  .shop-btn .emoji { height: 38px; }
+  .shop-btn .emoji img { height: 38px; width: 38px; }
   .shop-btn .name { font-size: .8rem; }
   .brand { font-size: 1.1rem; }
   .stat { font-size: .9rem; padding: 5px 10px; }

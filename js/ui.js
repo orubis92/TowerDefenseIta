@@ -17,6 +17,26 @@ class UI {
     game.on("wave-end", () => this.refresh());
     game.on("won", r => this.showResult(true, r));
     game.on("lost", r => this.showResult(false, r));
+
+    // audio
+    this.audio = new AudioFX();
+    const unlock = () => { this.audio.init(); };
+    window.addEventListener("pointerdown", unlock);
+    window.addEventListener("keydown", unlock);
+    this._shootThrottle = {};
+    game.on("shoot", type => {
+      const now = performance.now();
+      if (this._shootThrottle[type] && now - this._shootThrottle[type] < 90) return;
+      this._shootThrottle[type] = now;
+      this.audio.shoot(type);
+    });
+    game.on("kill", boss => this.audio.kill(boss));
+    game.on("sfx", k => this.audio[k] && this.audio[k]());
+    game.on("wave-start", () => this.audio.waveStart());
+    game.on("wave-end", () => this.audio.waveEnd());
+    game.on("won", () => this.audio.win());
+    game.on("lost", () => this.audio.lose());
+    game.on("ability", k => this.audio.ability(k));
     this.showMenu();
   }
 
@@ -74,7 +94,7 @@ class UI {
     Object.entries(TOWERS).forEach(([key, def], i) => {
       const b = document.createElement("button");
       b.className = "shop-btn";
-      b.innerHTML = `<span class="key">${i + 1}</span><div class="emoji">${def.emoji}</div><div class="name">${def.name}</div><div class="cost">💰 ${def.cost}</div><div class="desc">${def.desc}</div>`;
+      b.innerHTML = `<span class="key">${i + 1}</span><div class="emoji"><img src="${Sprites.dataUrl(key)}" alt=""></div><div class="name">${def.name}</div><div class="cost">💰 ${def.cost}</div><div class="desc">${def.desc}</div>`;
       b.addEventListener("click", () => this.game.selectShop(key));
       shop.appendChild(b);
       this.shopButtons[key] = b;
@@ -117,6 +137,9 @@ class UI {
     this.$("btn-wave").addEventListener("click", () => { g.startWave(); this.refresh(); });
     this.$("btn-speed").addEventListener("click", () => g.toggleSpeed());
     this.$("btn-pause").addEventListener("click", () => g.togglePause());
+    this.$("btn-auto").addEventListener("click", () => { g.toggleAutoWave(); this.toast(g.autoWave ? "Ondate automatiche: attive" : "Ondate automatiche: disattivate"); });
+    this.$("btn-sfx").addEventListener("click", () => { this.audio.toggleSfx(); this.refreshToggles(); });
+    this.$("btn-music").addEventListener("click", () => { this.audio.toggleMusic(); this.refreshToggles(); });
     this.$("btn-menu").addEventListener("click", () => {
       if (g.state === "wave" && !confirm("Abbandonare la partita in corso?")) return;
       this.showMenu();
@@ -174,8 +197,18 @@ class UI {
     box.classList.add(cls);
   }
 
+  refreshToggles() {
+    const a = this.audio;
+    this.$("btn-sfx").textContent = a.enabled ? "🔊" : "🔇";
+    this.$("btn-sfx").classList.toggle("off", !a.enabled);
+    this.$("btn-music").textContent = a.musicOn ? "🎵" : "🎵";
+    this.$("btn-music").classList.toggle("off", !a.musicOn);
+  }
+
   refresh() {
     const g = this.game;
+    this.refreshToggles();
+    this.$("btn-auto").classList.toggle("on", g.autoWave);
     this.setStat("stat-gold", g.gold, "bump");
     this.setStat("stat-lives", g.lives, "hurt");
     this.setStat("stat-wave", g.wave, "bump");
@@ -202,7 +235,7 @@ class UI {
     this.$("selection-info").classList.toggle("hidden", !t);
     if (t) {
       const s = t.stats;
-      this.$("sel-emoji").textContent = t.def.emoji;
+      this.$("sel-emoji").innerHTML = `<img src="${Sprites.dataUrl(t.type)}" alt="">`;
       this.$("sel-name").textContent = t.def.name;
       this.$("sel-level").innerHTML = `Livello ${t.level + 1}/${t.def.levels.length} <span class="stars">${"★".repeat(t.level + 1)}${"☆".repeat(t.def.levels.length - t.level - 1)}</span>`;
       let extra = "";
@@ -225,6 +258,7 @@ class UI {
     btn.disabled = !g.canStartWave;
     if (g.state === "wave") btn.textContent = `⏳ Ondata ${g.wave} in corso…`;
     else if (g.state === "won" || g.state === "lost") btn.textContent = "🏁 Servizio finito";
+    else if (g.autoWave && g.wave > 0 && g.autoTimer > 0) btn.textContent = `⏱ Ondata ${g.wave + 1} tra ${Math.ceil(g.autoTimer)}s`;
     else if (g.endless) btn.textContent = `♾️ Ondata ${g.wave + 1}`;
     else btn.textContent = g.wave === 0 ? "▶️ Fai entrare i clienti" : `▶️ Ondata ${g.wave + 1}`;
     this.renderWavePreview();
@@ -241,7 +275,7 @@ class UI {
     for (const grp of def.groups) { const ty = grp.type === "boss" ? g.map.boss : grp.type; counts[ty] = (counts[ty] || 0) + grp.count; }
     const label = g.state === "wave" ? "In sala:" : "Prossimi:";
     box.innerHTML = `<span class="hint" style="margin:0">${label}</span>` + Object.entries(counts)
-      .map(([k, c]) => `<span class="wave-chip${ENEMIES[k].boss ? " boss" : ""}" title="${ENEMIES[k].name}"><span class="e">${ENEMIES[k].emoji}</span>×${c}</span>`).join("");
+      .map(([k, c]) => `<span class="wave-chip${ENEMIES[k].boss ? " boss" : ""}" title="${ENEMIES[k].name}"><img class="e" src="${Sprites.dataUrl(k)}" alt="">×${c}</span>`).join("");
     this.renderWaveBar();
   }
 

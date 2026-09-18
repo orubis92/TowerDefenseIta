@@ -1,9 +1,9 @@
 /* Service worker: cache-first per giocare offline */
-const CACHE = "trattoria-defense-v3";
+const CACHE = "trattoria-defense-v5";
 const ASSETS = [
   "./", "./index.html", "./manifest.webmanifest",
   "./css/style.css",
-  "./js/config.js", "./js/entities.js", "./js/game.js", "./js/render.js", "./js/ui.js", "./js/main.js",
+  "./js/config.js", "./js/sprites.js", "./js/audio.js", "./js/entities.js", "./js/game.js", "./js/render.js", "./js/ui.js", "./js/main.js",
   "./icons/icon-192.png", "./icons/icon-512.png",
 ];
 

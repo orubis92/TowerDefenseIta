@@ -35,6 +35,7 @@ class Game {
     this.width = CONFIG.cols * this.cell;
     this.height = CONFIG.rows * this.cell;
     this.listeners = {};
+    this.autoWave = false;         // avvio automatico dell'ondata successiva
     this.loadMap(MAP_ORDER[0]);
   }
 
@@ -105,6 +106,7 @@ class Game {
     this.rateMult = 1;
     this.shake = 0;
     this.result = null;
+    this.autoTimer = 0;
   }
 
   /* --- punteggio --- */
@@ -147,6 +149,7 @@ class Game {
     let mult = (1 + CONFIG.hpScalePerWave * (story - 1)) * this.map.difficulty;
     if (this.wave > CONFIG.storyWaves) mult *= 1 + CONFIG.endless.hpScalePerWave * (this.wave - CONFIG.storyWaves);
     this.hpMult = mult;
+    this.autoTimer = 0;
     this.emit("wave-start", this.wave);
     return true;
   }
@@ -170,6 +173,7 @@ class Game {
       // in modalità infinita il record di ondate si aggiorna subito
       if (this.endless) SaveData.record(this.mapKey, { wave: this.wave, score: this.score });
       this.emit("wave-end", this.wave);
+      if (this.autoWave) this.autoTimer = 4;
     }
   }
 
@@ -237,13 +241,14 @@ class Game {
     if (this.placing) {
       if (!this.canBuild(col, row)) {
         if (existing) { this.selectedTower = existing; this.placing = null; }
-        else this.emit("toast", "Non si può piazzare qui.");
+        else { this.emit("toast", "Non si può piazzare qui."); this.emit("sfx", "error"); }
         this.emit("change");
         return;
       }
       const def = TOWERS[this.placing];
-      if (this.gold < def.cost) { this.emit("toast", "Mance insufficienti!"); return; }
+      if (this.gold < def.cost) { this.emit("toast", "Mance insufficienti!"); this.emit("sfx", "error"); return; }
       this.gold -= def.cost;
+      this.emit("sfx", "build");
       const t = new Tower(this.placing, col, row);
       this.towers.push(t);
       this.texts.push(new FloatingText(`-${def.cost}💰`, t.x, t.y - 10, "#ffb0a0"));
@@ -259,9 +264,10 @@ class Game {
     const t = this.selectedTower;
     if (!t || t.maxLevel) return;
     const cost = t.upgradeCost;
-    if (this.gold < cost) { this.emit("toast", "Mance insufficienti!"); return; }
+    if (this.gold < cost) { this.emit("toast", "Mance insufficienti!"); this.emit("sfx", "error"); return; }
     this.gold -= cost;
     t.upgrade();
+    this.emit("sfx", "upgrade");
     this.texts.push(new FloatingText("⬆️ Livello " + (t.level + 1), t.x, t.y - 14, "#b8f08a"));
     this.emit("change");
   }
@@ -270,6 +276,7 @@ class Game {
     const t = this.selectedTower;
     if (!t) return;
     this.gold += t.sellValue;
+    this.emit("sfx", "sell");
     this.texts.push(new FloatingText(`+${t.sellValue}💰`, t.x, t.y - 10, "#ffe28a"));
     this.towers = this.towers.filter(x => x !== t);
     this.projectiles = this.projectiles.filter(p => p.tower !== t);
@@ -277,7 +284,8 @@ class Game {
     this.emit("change");
   }
 
-  toggleSpeed() { this.speed = this.speed === 1 ? 2 : 1; this.emit("change"); }
+  toggleSpeed() { this.speed = this.speed >= 3 ? 1 : this.speed + 1; this.emit("change"); }
+  toggleAutoWave() { this.autoWave = !this.autoWave; this.autoTimer = 0; this.emit("change"); }
   togglePause() { this.paused = !this.paused; this.emit("change"); }
 
   /* --- ciclo di aggiornamento --- */
@@ -288,6 +296,12 @@ class Game {
     }
     const dt = rawDt * this.speed;
     this.time += dt;
+
+    // avvio automatico dell'ondata successiva
+    if (this.autoWave && this.state === "idle" && this.wave > 0 && this.canStartWave) {
+      this.autoTimer -= dt;
+      if (this.autoTimer <= 0) { this.startWave(); this.emit("change"); }
+    }
 
     // abilità: ricariche e durate
     this.rateMult = 1;
@@ -313,6 +327,7 @@ class Game {
         this.lives -= e.livesCost;
         this.texts.push(new FloatingText(`-${e.livesCost}❤️`, Math.min(Math.max(endP.x, 40), this.width - 40), Math.min(Math.max(endP.y - 20, 20), this.height - 20), "#ff7b6b"));
         this.shake = Math.max(this.shake, 0.2);
+        this.emit("sfx", "lifeLost");
         if (this.lives <= 0) {
           this.lives = 0;
           this.state = "lost";
@@ -334,7 +349,9 @@ class Game {
     }
 
     // torri
+    const nBefore = this.projectiles.length;
     for (const t of this.towers) t.update(dt, this.enemies, this.projectiles, this.rateMult);
+    for (let i = nBefore; i < this.projectiles.length; i++) this.emit("shoot", this.projectiles[i].tower.type);
 
     // proiettili
     for (const p of this.projectiles) p.update(dt, this.enemies, this.effects);
@@ -350,6 +367,7 @@ class Game {
         this.effects.push(new Effect("pop", e.x, e.y, e.size));
         spawnBurst(this.effects, e.x, e.y, e.def.color || "#ff8a65", e.def.boss ? 40 : 10);
         if (e.def.boss) this.shake = Math.max(this.shake, 0.5);
+        this.emit("kill", e.def.boss);
         if (e.def.spawnOnDeath && !e.reachedEnd) {
           for (let i = 0; i < e.def.spawnOnDeath.count; i++) spawned.push([e.def.spawnOnDeath.type, e]);
         }

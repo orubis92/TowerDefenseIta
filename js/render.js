@@ -221,8 +221,7 @@ class Renderer {
       ctx.fillStyle = `rgba(${rgb},0.45)`;
       this.roundRect(ctx, col * c + 3, row * c + 3, c - 6, c - 6, 8); ctx.fill();
       ctx.globalAlpha = 0.8;
-      ctx.font = "28px sans-serif";
-      ctx.fillText(def.emoji, x, y + 1);
+      Sprites.draw(ctx, g.placing, x, y - 4, c * 1.25);
       ctx.globalAlpha = 1;
     }
 
@@ -254,9 +253,13 @@ class Renderer {
       tg.addColorStop(0, "rgba(255,220,150,0)"); tg.addColorStop(1, "rgba(255,220,150,0.6)");
       ctx.strokeStyle = tg; ctx.lineWidth = 4; ctx.lineCap = "round";
       ctx.beginPath(); ctx.moveTo(-Math.cos(ang) * 18, -Math.sin(ang) * 18); ctx.lineTo(0, 0); ctx.stroke();
-      ctx.rotate(p.spin);
-      ctx.font = "16px sans-serif";
-      ctx.fillText(p.emoji, 0, 0);
+      const pk = "p_" + p.tower.type;
+      if (Sprites.has(pk)) {
+        if (p.tower.type === "sommelier" || p.tower.type === "nonna" || p.tower.type === "barista") ctx.rotate(ang + Math.PI / 2); else ctx.rotate(p.spin);
+        Sprites.draw(ctx, pk, 0, 0, 26);
+      } else {
+        ctx.rotate(p.spin); ctx.font = "16px sans-serif"; ctx.fillText(p.emoji, 0, 0);
+      }
       ctx.restore();
     }
 
@@ -333,11 +336,15 @@ class Renderer {
     ctx.fillStyle = grad;
     ctx.beginPath(); ctx.arc(t.x, t.y, c * 0.39, 0, Math.PI * 2); ctx.fill();
     ctx.strokeStyle = selected ? "#ffc247" : "rgba(138,42,31,0.6)"; ctx.lineWidth = selected ? 3 : 1.5; ctx.stroke();
-    // emoji con leggero rinculo verso il bersaglio
+    // sprite con leggero rinculo verso il bersaglio; guarda a destra o a sinistra
     const k = t.recoil > 0 ? t.recoil / 0.15 : 0;
     const ox = -Math.cos(t.angle) * 4 * k, oy = -Math.sin(t.angle) * 4 * k;
-    ctx.font = "26px sans-serif";
-    ctx.fillText(t.def.emoji, t.x + ox, t.y + oy + 1);
+    const flip = Math.cos(t.angle) < -0.2;
+    ctx.save();
+    ctx.translate(t.x + ox, t.y + oy - 5);
+    if (flip) ctx.scale(-1, 1);
+    Sprites.draw(ctx, t.type, 0, 0, c * 1.3);
+    ctx.restore();
     // livello: pallini dorati
     if (t.level > 0) {
       for (let i = 0; i < t.level; i++) {
@@ -365,9 +372,11 @@ class Renderer {
     // corpo
     ctx.save();
     ctx.translate(e.x, e.y + bob); ctx.rotate(tilt);
-    ctx.font = `${e.size}px sans-serif`;
+    // guarda nella direzione di marcia
+    const nxt = e.path[Math.min(e.wpIndex, e.path.length - 1)];
+    if (nxt && nxt.x < e.x - 1) ctx.scale(-1, 1);
     if (e.hitFlash > 0) ctx.filter = "brightness(1.9) saturate(0.4)";
-    ctx.fillText(e.def.emoji, 0, 0);
+    Sprites.draw(ctx, e.type, 0, 0, e.size * 2.1);
     ctx.restore();
     if (e.slowFactor < 1) {
       ctx.font = "12px sans-serif";
@@ -379,7 +388,7 @@ class Renderer {
     }
     // barra HP arrotondata
     const w = Math.max(24, e.size * 1.25), h = 5;
-    const x = e.x - w / 2, y = e.y - e.size * 0.8 + bob;
+    const x = e.x - w / 2, y = e.y - e.size * 1.15 + bob;
     ctx.fillStyle = "rgba(20,8,4,0.6)";
     this.roundRect(ctx, x - 1, y - 1, w + 2, h + 2, 3); ctx.fill();
     const pct = Math.max(0, e.hp / e.maxHp);
